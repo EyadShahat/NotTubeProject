@@ -1,88 +1,53 @@
 # NotTube
 
-React (Vite) front end + Node/Express + MongoDB backend with JWT auth.
+Full-stack YouTube-like demo. React 19 + Vite front end, Node/Express + MongoDB backend with JWT auth, Supabase uploads, and admin flagging/review flows.
 
-## Stack
-- Front end: React 19 + Vite, hash-based routing, fetch to REST APIs.
-- Back end: Node.js, Express, MongoDB (Mongoose), JWT auth, Zod validation.
-
-## Setup
-1) Install dependencies
-```
+## Quick start (local)
+```bash
+# backend
 cd backend
 npm install
+cp .env.example .env   # add your secrets
+npm run dev            # http://localhost:4000
 
+# frontend
 cd ../nottube
 npm install
+cp .env.example .env   # set VITE_API_URL if not using localhost
+npm run dev            # http://localhost:5173
 ```
 
-2) Create `backend/.env` (do not commit secrets). Example:
-```
-PORT=4000
-MONGODB_URI=mongodb+srv://s202349310_db_user:123@cluster0.0ckipef.mongodb.net/?appName=Cluster0
-JWT_SECRET=change-this-secret
-CLIENT_ORIGIN=http://localhost:5173
-ADMIN_EMAILS=admin@nottube.com
-SUPABASE_URL=https://tygbixuonaooyabtiwiq.supabase.co 
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR5Z2JpeHVvbmFvb3lhYnRpd2lxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTAzNTg3NywiZXhwIjoyMDgwNjExODc3fQ.VMDphO5_vkY4xMrNZTbLMmGrFfRGae1sPyma3heLNWY
-SUPABASE_BUCKET=videos
+## Environment variables
+`backend/.env` (see `.env.example`):
+- `PORT` (default 4000)
+- `MONGODB_URI` MongoDB connection string
+- `JWT_SECRET` secret key
+- `CLIENT_ORIGIN` comma-separated allowed origins (e.g. `http://localhost:5173,https://your-site.com`)
+- `ADMIN_EMAILS` comma-separated admin emails
+- `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_BUCKET` for uploads
 
-```
+`nottube/.env` (see `.env.example`):
+- `VITE_API_URL` REST base, include `/api` (e.g. `https://your-api.com/api`). If omitted, dev defaults to `http://localhost:4000/api` and prod falls back to same-origin `/api`.
 
-3) Run the servers (two terminals):
-```
-cd backend
-npm run dev
+## Scripts
+Backend:
+- `npm run dev` — start API with nodemon
+- `npm test` / `npm run lint` — add your own tests/linting as needed
 
-cd nottube
-npm run dev
-```
-Front end runs at `http://localhost:5173`, API at `http://localhost:4000/api`.
+Frontend:
+- `npm run dev` — Vite dev server
+- `npm run build` — production build
+- `npm run preview` — preview built app
 
-## API quick reference
-Authorization header: `Authorization: Bearer <token>` for protected routes.
+## API surface (summary)
+- Auth: `POST /api/auth/signup`, `POST /api/auth/login`, `GET /api/auth/me`, `PUT /api/auth/profile`, `POST /api/auth/subscriptions/toggle`
+- Videos: list/search/create/update/delete, like/save/watch (`/api/videos...`)
+- Comments: list/create/delete (`/api/comments...`)
+- Flags & appeals: create flag, list flags (admin), update flag, appeal (`/api/flags...`)
+- Uploads: `POST /api/upload/video` (Supabase direct upload)
 
-### Auth
-- `POST /api/auth/signup` `{ email, password, name? }` → `{ token, user }`
-- `POST /api/auth/login` `{ email, password }` → `{ token, user }`
-- `GET /api/auth/me` → `{ user }`
-- `PUT /api/auth/profile` `{ name }` → `{ user }`
-- `POST /api/auth/subscriptions/toggle` `{ channel }` → `{ subscribed, subscriptions }`
+Protected routes expect `Authorization: Bearer <token>`.
 
-### Videos
-- `GET /api/videos?search=term` → `{ videos }`
-- `GET /api/videos/mine` (auth) → `{ videos }`
-- `POST /api/videos` (auth) `{ title, description, src, length }` → `{ video }`
-- `GET /api/videos/:id` → `{ video }`
-- `PUT /api/videos/:id` (owner/admin) `{ ...fields }`
-- `DELETE /api/videos/:id` (owner/admin)
-- `POST /api/videos/:id/like` (auth) → `{ liked, likesCount }`
-- `POST /api/videos/:id/save` (auth) → `{ saved }`
-- `POST /api/videos/:id/watch` (auth) → `{ watched, views }`
-
-### Comments
-- `GET /api/comments/video/:videoId` → `{ comments }`
-- `POST /api/comments/video/:videoId` (auth) `{ text }` → `{ comment }`
-- `DELETE /api/comments/:id` (owner/admin)
-
-### Flags / appeals
-- `POST /api/flags` (auth) `{ type: video|account|comment, targetId, reason, message? }` → `{ flag }`
-- `GET /api/flags` (admin) → `{ flags }`
-- `PATCH /api/flags/:id` (admin) `{ status?, resolution? }` → `{ flag }`
-
-
-Create a video (requires token):
-```
-TOKEN=your-token-here
-curl -X POST http://localhost:4000/api/videos \
-  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{"title":"Demo","src":"https://example.com/file.mp4","length":"3:00","description":"Test"}'
-```
-
-List videos:
-```
-curl http://localhost:4000/api/videos
-```
 
 
 ## Demo Login Accounts
@@ -97,7 +62,3 @@ curl http://localhost:4000/api/videos
 - **Password for both:** Aa$123
 
 
-## Front-end notes
-- Uses the REST API for auth, videos, likes/saves/watched, comments, and subscriptions.
-- Upload flow expects a direct, publicly reachable MP4 URL (no file storage on this server).
-- Hash routing (`#/...`) keeps it SPA-only; adjust `VITE_API_URL` if you host the API elsewhere.
