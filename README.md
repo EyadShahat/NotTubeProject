@@ -87,6 +87,19 @@ List videos:
 curl http://localhost:4000/api/videos
 ```
 
+
+## Demo Login Accounts
+
+### Admin Account
+- **Email:** admin@nottube.com  
+- **Password:** password  
+
+### User Accounts (Both Users Share the Same Password)
+- **Email:** y@kfupm.edu.sa  
+- **Email:** ya@kfupm.edu.sa  
+- **Password for both:** Aa$123
+
+
 ## Front-end notes
 - Uses the REST API for auth, videos, likes/saves/watched, comments, and subscriptions.
 - Upload flow expects a direct, publicly reachable MP4 URL (no file storage on this server).
