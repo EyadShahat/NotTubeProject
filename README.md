@@ -19,10 +19,14 @@ npm install
 2) Create `backend/.env` (do not commit secrets). Example:
 ```
 PORT=4000
-MONGODB_URI=your-mongodb-uri
-JWT_SECRET=super-secret-change-me
+MONGODB_URI=mongodb+srv://s202349310_db_user:123@cluster0.0ckipef.mongodb.net/?appName=Cluster0
+JWT_SECRET=change-this-secret
 CLIENT_ORIGIN=http://localhost:5173
 ADMIN_EMAILS=admin@nottube.com
+SUPABASE_URL=https://tygbixuonaooyabtiwiq.supabase.co 
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR5Z2JpeHVvbmFvb3lhYnRpd2lxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTAzNTg3NywiZXhwIjoyMDgwNjExODc3fQ.VMDphO5_vkY4xMrNZTbLMmGrFfRGae1sPyma3heLNWY
+SUPABASE_BUCKET=videos
+
 ```
 
 3) Run the servers (two terminals):
@@ -66,13 +70,6 @@ Authorization header: `Authorization: Bearer <token>` for protected routes.
 - `GET /api/flags` (admin) → `{ flags }`
 - `PATCH /api/flags/:id` (admin) `{ status?, resolution? }` → `{ flag }`
 
-## cURL smoke tests
-Signup/login:
-```
-curl -X POST http://localhost:4000/api/auth/signup \
-  -H "Content-Type: application/json" \
-  -d '{"email":"user@example.com","password":"password","name":"User"}'
-```
 
 Create a video (requires token):
 ```
