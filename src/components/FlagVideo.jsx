@@ -1,23 +1,38 @@
 import React from "react";
 import AdminLayout from "./AdminLayout.jsx";
+import { useNotTube } from "../state/NotTubeState.jsx";
 
 export default function FlagVideo() {
   const [url, setUrl] = React.useState("");
   const [code, setCode] = React.useState("Copy Right");
   const [comment, setComment] = React.useState("");
+  const [status, setStatus] = React.useState("");
+  const { createFlag, user } = useNotTube();
 
   function handleSubmit(e) {
     e.preventDefault();
-    //clearinh the form for now; backend integration will happen later
-    setUrl("");
-    setCode("Copy Right");
-    setComment("");
-    alert("Video flagged (mock)");
+    setStatus("");
+    createFlag({
+      type: "video",
+      targetId: url.trim(),
+      reason: code.trim() || "Unspecified",
+      message: comment.trim(),
+    })
+      .then(() => {
+        setStatus("Flag submitted");
+        setUrl("");
+        setCode("Copy Right");
+        setComment("");
+      })
+      .catch((err) => setStatus(err.message || "Failed to submit flag"));
   }
 
   return (
     <AdminLayout active="flag-video">
       <h2 style={{ margin: "0 0 16px", fontSize: 24, fontWeight: 700 }}>Flag Video</h2>
+      {!user?.role === "admin" && (
+        <div style={{ color: "#b91c1c", marginBottom: 12 }}>Admin access required.</div>
+      )}
       <form onSubmit={handleSubmit} style={{ maxWidth: 520 }}>
         <div style={{ marginBottom: 16 }}>
           <label style={{ display: "block", fontWeight: 600, marginBottom: 6 }} htmlFor="video-url">
@@ -80,6 +95,7 @@ export default function FlagVideo() {
             }}
           />
         </div>
+        {status && <div style={{ marginBottom: 12, color: status.includes("Failed") ? "#b91c1c" : "#065f46" }}>{status}</div>}
         <button
           type="submit"
           style={{
@@ -92,8 +108,9 @@ export default function FlagVideo() {
             fontWeight: 600,
             cursor: "pointer",
           }}
+          disabled={!url.trim()}
         >
-          Done
+          Submit flag
         </button>
       </form>
     </AdminLayout>

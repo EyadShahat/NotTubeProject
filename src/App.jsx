@@ -1,5 +1,5 @@
 import React from "react";
-import { NotTubeProvider } from "./state/NotTubeState.jsx";
+import { NotTubeProvider, useNotTube } from "./state/NotTubeState.jsx";
 
 // pages
 import NotTubeLogin from "./components/NotTubeLogin.jsx";
@@ -13,11 +13,12 @@ import VideoPage from "./components/VideoPage.jsx";
 import ChannelPage from "./components/ChannelPage.jsx";
 import UploadPage from "./components/UploadPage.jsx";
 import ManageVideos from "./components/ManageVideos.jsx";
-import SearchResults from "./components/SearchResults.jsx"; // ✅ Added
+import SearchResults from "./components/SearchResults.jsx";
 import ManageAppeals from "./components/ManageAppeals.jsx";
 import FlagVideo from "./components/FlagVideo.jsx";
 import FlagAccount from "./components/FlagAccount.jsx";
 import FlagComment from "./components/FlagComment.jsx";
+import MyFlags from "./components/MyFlags.jsx";
 
 export default function App() {
   const [route, setRoute] = React.useState(parseRoute());
@@ -30,10 +31,35 @@ export default function App() {
 
   return (
     <NotTubeProvider>
+      <RouterContent route={route} />
+    </NotTubeProvider>
+  );
+}
+
+function RouterContent({ route }) {
+  const { user, loading } = useNotTube();
+  const authPage = route.name === "login" || route.name === "signup";
+
+  React.useEffect(() => {
+    if (!loading && !user && !authPage) {
+      window.location.hash = "#/login";
+    }
+  }, [user, loading, authPage]);
+
+  if (loading) return <div style={{ padding: 24 }}>Loading...</div>;
+
+  if (!user && authPage) {
+    return route.name === "signup" ? <NotTubeSignup /> : <NotTubeLogin />;
+  }
+
+  if (!user) return <NotTubeLogin />;
+
+  return (
+    <>
       {route.name === "signup"   && <NotTubeSignup />}
       {route.name === "login"    && <NotTubeLogin />}
       {route.name === "home"     && <HomePage />}
-      {route.name === "search"   && <SearchResults q={route.q} />} {/* ✅ Added */}
+      {route.name === "search"   && <SearchResults q={route.q} />}
       {route.name === "liked"    && <LikedVideos />}
       {route.name === "saved"    && <SavedVideos />}
       {route.name === "watched"  && <WatchedVideos />}
@@ -44,13 +70,13 @@ export default function App() {
       {route.name === "admin-flag-comment" && <FlagComment />}
       {route.name === "upload"   && <UploadPage />}
       {route.name === "manage"   && <ManageVideos />}
+      {route.name === "my-flags" && <MyFlags />}
       {route.name === "video"    && <VideoPage id={route.id} />}
       {route.name === "channel"  && <ChannelPage slug={route.slug} />}
-    </NotTubeProvider>
+    </>
   );
 }
 
-// ✅ Updated route parser
 function parseRoute() {
   const h = window.location.hash || "#/login";
   const hl = h.toLowerCase();
@@ -69,6 +95,7 @@ function parseRoute() {
   if (hl.startsWith("#/profile")) return { name: "profile" };
   if (hl.startsWith("#/upload"))  return { name: "upload" };
   if (hl.startsWith("#/manage"))  return { name: "manage" };
+  if (hl.startsWith("#/my-flags")) return { name: "my-flags" };
 
   // Admin routes
   if (hl.startsWith("#/admin/flag-video"))   return { name: "admin-flag-video" };

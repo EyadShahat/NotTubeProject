@@ -5,30 +5,22 @@ export default function NotTubeLogin() {
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [showPw, setShowPw] = React.useState(false);
-  
+  const [error, setError] = React.useState("");
+  const { login } = useNotTube();
 
   const canSubmit = email.trim() && password.trim();
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     if (!canSubmit) return;
-
-    // If credentials match the simple admin credentials, mark admin in localStorage
+    setError("");
     try {
-      if (email === "admin@nottube.com" && password === "admin") {
-        // mark as admin but take the user to the homepage first
-        localStorage.setItem("nt_is_admin", "true");
-        window.location.hash = "#/home";
-        return;
-      }
-      // clear admin flag for normal logins
-      localStorage.removeItem("nt_is_admin");
-    } catch (err) {}
-
-    // Normal user -> Home
-    window.location.hash = "#/home";
+      await login(email.trim(), password.trim());
+      window.location.hash = "#/home";
+    } catch (err) {
+      setError(err.message || "Login failed");
+    }
   }
-  
 
   return (
     <div className="page">
@@ -112,6 +104,7 @@ export default function NotTubeLogin() {
           </div>
 
           <h1 className="title">Log in</h1>
+          {error && <div style={{ color: "#b91c1c" }}>{error}</div>}
 
           <form className="form" onSubmit={handleSubmit}>
             {/* email */}
@@ -169,4 +162,3 @@ function LogoMark({ className }) {
     </svg>
   );
 }
-

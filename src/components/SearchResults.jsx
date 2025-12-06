@@ -1,20 +1,22 @@
 import React from "react";
 import ShellLayout from "./ShellLayout.jsx";
-import { getAllVideos } from "../data/videos.js";
+import { useNotTube } from "../state/NotTubeState.jsx";
 
 export default function SearchResults({ q = "" }) {
   const [term, setTerm] = React.useState(decodeURIComponent(q || ""));
-  const ALL = getAllVideos();
+  const { videos, refreshVideos } = useNotTube();
+
+  React.useEffect(() => { refreshVideos(term); }, [term, refreshVideos]);
 
   const results = React.useMemo(() => {
     const t = term.trim().toLowerCase();
     if (!t) return [];
-    return ALL.filter(v =>
+    return videos.filter(v =>
       (v.title || "").toLowerCase().includes(t) ||
-      (v.channel || "").toLowerCase().includes(t) ||
+      (v.channelName || v.channel || "").toLowerCase().includes(t) ||
       (v.description || "").toLowerCase().includes(t)
     );
-  }, [term, ALL]);
+  }, [term, videos]);
 
   const goSearch = () => {
     const t = term.trim();
@@ -31,7 +33,8 @@ export default function SearchResults({ q = "" }) {
         .btn { height:44px; padding:0 16px; border-radius:999px; border:1px solid #d1d5db; background:#fff; font-weight:700; cursor:pointer; }
         .list { display:flex; flex-direction:column; gap:14px; margin-top:12px; }
         .item { display:grid; grid-template-columns: 320px 1fr; gap:12px; border:1px solid #e5e7eb; background:#fff; border-radius:12px; overflow:hidden; text-decoration:none; color:inherit; }
-        .thumb { aspect-ratio:16/9; background:#d1d5db; }
+        .thumb { aspect-ratio:16/9; background:#d1d5db; overflow:hidden; border-radius:10px; }
+        .thumbMedia { width:100%; height:100%; object-fit:cover; display:block; }
         .meta { padding:10px; }
         .ttl { font-weight:800; font-size:16px; margin-bottom:6px; line-height:1.25; }
         .by { color:#6b7280; font-size:12.5px; }
@@ -56,24 +59,29 @@ export default function SearchResults({ q = "" }) {
                 }
               }}
             />
-            <button className="btn" type="button" onClick={goSearch}>🔍</button>
+            <button className="btn" type="button" onClick={goSearch}>Search</button>
           </div>
-          {/* Home button removed */}
         </div>
       </div>
 
       {term.trim() && results.length === 0 && (
-        <div className="empty">No results for “<strong>{term}</strong>”.</div>
+        <div className="empty">No results for <strong>{term}</strong>.</div>
       )}
 
       <div className="list">
         {results.map(v => (
           <a key={v.id} href={`#/video/${v.id}`} className="item">
-            <div className="thumb" />
+            <div className="thumb">
+              {v.thumb ? (
+                <img className="thumbMedia" src={v.thumb} alt="" />
+              ) : (
+                <video className="thumbMedia" src={v.src} muted playsInline preload="metadata" />
+              )}
+            </div>
             <div className="meta">
               <div className="ttl">{v.title}</div>
               <div className="by">
-                {v.channel} • {v.views || "–"} {v.views ? "views" : ""} {v.when ? `• ${v.when}` : ""}
+                {v.channelName || v.channel} • {v.views || 0} views
               </div>
               {v.description && <div className="desc">{v.description}</div>}
             </div>

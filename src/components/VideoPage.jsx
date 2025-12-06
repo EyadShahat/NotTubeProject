@@ -1,7 +1,7 @@
 import React from "react";
 import ShellLayout from "./ShellLayout.jsx";
-import { getAllVideos } from "../data/videos.js";
 import { useNotTube } from "../state/NotTubeState.jsx";
+import { apiRequest } from "../api/client.js";
 
 export default function VideoPage({ id }) {
   const {
@@ -12,22 +12,88 @@ export default function VideoPage({ id }) {
     savedIds,
     subs,
     toggleSubscribe,
+    videos,
+    refreshVideos,
+    user,
+    createFlag,
   } = useNotTube();
 
-  const ALL = getAllVideos();
-  const video = ALL.find((v) => String(v.id) === String(id));
-  const upNext = ALL.filter((v) => String(v.id) !== String(id)).slice(0, 10);
+  const [video, setVideo] = React.useState(() => videos.find((v) => String(v.id) === String(id)));
+  const [comments, setComments] = React.useState([]);
+  const [draft, setDraft] = React.useState("");
+  const [selectedAccount, setSelectedAccount] = React.useState(null);
+  const [accountInfo, setAccountInfo] = React.useState(null);
+  const [flaggedComments, setFlaggedComments] = React.useState(new Set());
+  const isAdmin = user?.role === "admin";
 
-  React.useEffect(() => { if (video) markWatched(video.id); }, [video, markWatched]);
+  React.useEffect(() => {
+    if (!video) {
+      refreshVideos().then((list) => {
+        const found = list.find((v) => String(v.id) === String(id));
+        if (found) setVideo(found);
+      });
+    } else {
+      markWatched(video.id);
+      loadComments(video.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, video?.id]);
 
-  // topbar search (no <form>)
+  async function loadComments(vid) {
+    const res = await apiRequest(`/comments/video/${vid}`);
+    setComments(res.comments || []);
+  }
+
+  async function addComment(e) {
+    e.preventDefault();
+    const txt = draft.trim();
+    if (!txt || !video) return;
+    if (user?.accountStatus === "flagged") {
+      alert("Your account is flagged and cannot comment until resolved.");
+      return;
+    }
+    await apiRequest(`/comments/video/${video.id}`, { method: "POST", body: { text: txt } });
+    setDraft("");
+    loadComments(video.id);
+  }
+
+  async function openAccountInfo(userId) {
+    if (!userId) return;
+    setSelectedAccount(userId);
+    const res = await apiRequest(`/users/${userId}`);
+    setAccountInfo(res.user);
+  }
+
+  async function flagComment(id) {
+    await createFlag({ type:"comment", targetId:id, reason:"Inappropriate", message:"Flagged by admin" });
+    setFlaggedComments(prev => new Set([...prev, id]));
+    loadComments(video.id);
+  }
+
+  if (!video) {
+    return (
+      <ShellLayout>
+        <div style={{ padding: 16 }}>
+          <a href="#/home">&lt; Back</a>
+          <h2 style={{ marginTop: 8 }}>Video not found.</h2>
+        </div>
+      </ShellLayout>
+    );
+  }
+
+  const isLiked = likedIds.includes(String(video.id));
+  const isSaved = savedIds.includes(String(video.id));
+  const isSubd  = subs.includes(video.channelName || video.channel);
+  const src = video.src || "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4";
+  const uploaderId = video.owner;
+  const accountFlagged = user?.accountStatus === "flagged";
+
   const [q, setQ] = React.useState("");
   const goSearch = () => {
     const t = q.trim();
     window.location.hash = t ? `#/search?q=${encodeURIComponent(t)}` : "#/home";
   };
 
-  // player refs
   const playerRef = React.useRef(null);
   const playerWrapRef = React.useRef(null);
 
@@ -36,7 +102,6 @@ export default function VideoPage({ id }) {
     const vid  = playerRef.current;
     if (!wrap || !vid) return;
 
-    // iOS Safari prefers the native video fullscreen
     if (vid.webkitEnterFullscreen) {
       try { vid.webkitEnterFullscreen(); } catch {}
       return;
@@ -48,52 +113,10 @@ export default function VideoPage({ id }) {
     }
   };
 
-  // comments
-  const [comments, setComments] = React.useState([]);
-  const [draft, setDraft] = React.useState("");
-  React.useEffect(() => {
-    if (!video) return;
-    const stored = localStorage.getItem(`comments:${video.id}`);
-    if (stored) setComments(JSON.parse(stored));
-    else setComments([
-      { user: "@techfan", text: "love this edit!" },
-      { user: "@jordan", text: "timestamps please 🔥" },
-      { user: "@nora", text: "subbed, keep it up!" },
-    ]);
-  }, [video?.id]);
-
-  function addComment(e) {
-    e.preventDefault();
-    const txt = draft.trim();
-    if (!txt) return;
-    const next = [...comments, { user: "@you", text: txt }];
-    setComments(next);
-    localStorage.setItem(`comments:${video.id}`, JSON.stringify(next));
-    setDraft("");
-  }
-
-  if (!video) {
-    return (
-      <ShellLayout>
-        <div style={{ padding: 16 }}>
-          <a href="#/home">← Back</a>
-          <h2 style={{ marginTop: 8 }}>Video not found.</h2>
-        </div>
-      </ShellLayout>
-    );
-  }
-
-  const isLiked = likedIds.includes(video.id);
-  const isSaved = savedIds.includes(video.id);
-  const isSubd  = subs.includes(video.channel);
-  const channelSlug = slugify(video.channel);
-
-  // description expand/collapse
   const [openDesc, setOpenDesc] = React.useState(false);
   const descText = video.description || "No description provided.";
 
-  // pick source
-  const src = video.src || "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4";
+  const upNext = videos.filter((v) => String(v.id) !== String(id)).slice(0, 10);
 
   return (
     <ShellLayout>
@@ -115,7 +138,7 @@ export default function VideoPage({ id }) {
 
         .vtitle { font-size:28px; font-weight:900; letter-spacing:-.01em; margin:10px 0; }
         .chRow { display:flex; align-items:center; gap:12px; }
-        .ava { width:44px; height:44px; background:#0f172a; border-radius:999px; }
+        .ava { width:44px; height:44px; background:#0f172a center/cover no-repeat; border-radius:999px; }
         .chName { font-weight:800; }
         .meta { color:#6b7280; font-size:13px; }
         .actions { margin-left:auto; display:flex; gap:10px; }
@@ -129,7 +152,8 @@ export default function VideoPage({ id }) {
 
         .rail { display:flex; flex-direction:column; gap:12px; }
         .mini { display:grid; grid-template-columns: 160px 1fr; gap:8px; border:1px solid #e5e7eb; border-radius:12px; overflow:hidden; background:#fff; text-decoration:none; color:inherit; }
-        .mini .thumb { aspect-ratio:16/9; background:#d1d5db; }
+        .mini .thumb { aspect-ratio:16/9; background:#d1d5db; overflow:hidden; }
+        .thumbMedia { width:100%; height:100%; object-fit:cover; display:block; }
         .mini .ttl { font-weight:700; padding:8px 8px 0; }
         .mini .by { padding:0 8px 8px; color:#6b7280; font-size:12.5px; }
 
@@ -137,6 +161,7 @@ export default function VideoPage({ id }) {
         .commentForm { display:flex; gap:10px; margin-bottom:10px; }
         .commentInput { flex:1; height:40px; border:1px solid #e5e7eb; border-radius:10px; padding:0 12px; outline:none; }
         .commentBtn { height:40px; border-radius:10px; border:0; background:#111827; color:#fff; font-weight:700; padding:0 14px; }
+        .adminCard { margin-top:12px; padding:12px; border:1px solid #e5e7eb; border-radius:12px; background:#fff; }
       `}</style>
 
       {/* TOP BAR */}
@@ -156,9 +181,9 @@ export default function VideoPage({ id }) {
               }
             }}
           />
-          <button className="searchBtn" type="button" aria-label="Search" onClick={goSearch}>🔍</button>
+          <button className="searchBtn" type="button" aria-label="Search" onClick={goSearch}>Search</button>
         </div>
-        <a className="createBtn" href="#/upload" role="button">＋ Create</a>
+        <a className="createBtn" href="#/upload" role="button">Create</a>
         <div className="avatarBtn" title="Profile">E</div>
       </div>
 
@@ -181,17 +206,17 @@ export default function VideoPage({ id }) {
           <h1 className="vtitle">{video.title}</h1>
 
           <div className="chRow">
-            <div className="ava" />
+            <div className="ava" style={video.avatarUrl ? { backgroundImage:`url(${video.avatarUrl})` } : undefined} />
             <div>
               <a
-                href={`#/channel/${slugify(video.channel)}`}
+                href={`#/channel/${slugify(video.channelName || video.channel || "channel")}`}
                 className="chName"
                 style={{ textDecoration: "none", color: "inherit" }}
               >
-                {video.channel}
+                {video.channelName || video.channel || "Channel"}
               </a>
               <div className="meta">
-                {video.views || "–"} {video.views ? "views" : ""} {video.when ? `• ${video.when}` : ""}
+                {video.views || 0} views
               </div>
             </div>
 
@@ -199,7 +224,7 @@ export default function VideoPage({ id }) {
               <button className={`btn ${isLiked ? "primary" : ""}`} onClick={() => toggleLike(video.id)}>
                 {isLiked ? "Liked ✓" : "Like"}
               </button>
-              <button className={`btn ${isSubd ? "primary" : ""}`} onClick={() => toggleSubscribe(video.channel)}>
+              <button className={`btn ${isSubd ? "primary" : ""}`} onClick={() => toggleSubscribe(video.channelName || video.channel || "Channel")}>
                 {isSubd ? "Subscribed ✓" : "Subscribe"}
               </button>
               <button className={`btn ${isSaved ? "primary" : ""}`} onClick={() => toggleSave(video.id)}>
@@ -236,22 +261,80 @@ export default function VideoPage({ id }) {
           </form>
 
           <div className="commentBox">
-            {comments.map((c, i) => (
-              <p key={i}>
-                <strong>{c.user}</strong> — {c.text}
-              </p>
+            {comments.map((c) => (
+              <div key={c._id} style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", padding:"6px 0", borderBottom:"1px solid #e5e7eb" }}>
+                <div>
+                  <strong
+                    style={{ cursor: "pointer" }}
+                    onClick={() => openAccountInfo(c.user?._id)}
+                  >
+                    {c.user?.name || c.user?.email || "User"}
+                  </strong> — {c.text}
+                  {isAdmin && (
+                    <div style={{ fontSize:12, color:"#6b7280" }}>
+                      {c.user?.email} {c.user?.accountStatus === "flagged" ? "(flagged)" : ""}
+                    </div>
+                  )}
+                </div>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    className="btn"
+                    style={{
+                      height:28,
+                      padding:"0 10px",
+                      fontSize:12,
+                      background: flaggedComments.has(c._id) ? "#16a34a" : undefined,
+                      color: flaggedComments.has(c._id) ? "#fff" : undefined,
+                      borderColor: flaggedComments.has(c._id) ? "#16a34a" : undefined,
+                    }}
+                    onClick={() => flagComment(c._id)}
+                  >
+                    {flaggedComments.has(c._id) ? "Flagged" : "Flag"}
+                  </button>
+                )}
+              </div>
             ))}
           </div>
+
+          {accountInfo && selectedAccount && (
+            <div className="adminCard">
+              <div style={{ fontWeight:700, marginBottom:6 }}>Account info</div>
+              <div>Name: {accountInfo.name}</div>
+              <div>Status: {accountInfo.accountStatus}</div>
+              <div>Role: {accountInfo.role}</div>
+              <div style={{ display:"flex", alignItems:"center", gap:10, marginTop:8 }}>
+                {accountInfo.avatarUrl && <img src={accountInfo.avatarUrl} alt="" style={{ width:48, height:48, borderRadius:"50%" }} />}
+                {accountInfo.bio && <div style={{ color:"#374151", fontSize:13 }}>{accountInfo.bio}</div>}
+              </div>
+              {isAdmin && accountInfo.role !== "admin" && (
+                <button
+                  type="button"
+                  className="btn"
+                  style={{ marginTop:8, height:32, padding:"0 12px" }}
+                  onClick={() => createFlag({ type:"account", targetId:selectedAccount, reason:"Policy violation", message:"Flagged by admin" }).then(()=>alert("Account flagged"))}
+                >
+                  Flag account
+                </button>
+              )}
+            </div>
+          )}
         </section>
 
         <aside className="rail">
           {upNext.map((v) => (
             <a key={v.id} className="mini" href={`#/video/${v.id}`}>
-              <div className="thumb" />
+              <div className="thumb">
+                {v.thumb ? (
+                  <img className="thumbMedia" src={v.thumb} alt="" />
+                ) : (
+                  <video className="thumbMedia" src={v.src} muted playsInline preload="metadata" />
+                )}
+              </div>
               <div>
                 <div className="ttl">{v.title}</div>
                 <div className="by">
-                  {v.channel} • {v.views} • {v.when}
+                  {v.channelName || v.channel} • {v.views || 0}
                 </div>
               </div>
             </a>

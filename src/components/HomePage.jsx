@@ -1,10 +1,12 @@
 import React from "react";
 import ShellLayout from "./ShellLayout.jsx";
-import { getAllVideos } from "../data/videos.js";
+import { useNotTube } from "../state/NotTubeState.jsx";
 
 export default function HomePage() {
   const [q, setQ] = React.useState("");
-  const VIDEOS = getAllVideos();
+  const { videos, refreshVideos } = useNotTube();
+
+  React.useEffect(() => { refreshVideos(); }, [refreshVideos]);
 
   function goSearch() {
     const term = q.trim();
@@ -24,10 +26,11 @@ export default function HomePage() {
         .avatarBtn { width:36px; height:36px; border-radius:999px; background:#0f172a; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; }
         .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: clamp(10px, 1.6vw, 16px); align-items:start; }
         .card { background:#fff; border:1px solid #e5e7eb; border-radius:14px; overflow:hidden; text-decoration:none; color:inherit; }
-        .thumb { aspect-ratio:16/9; background:#d1d5db; position:relative; width:100%; }
+        .thumb { aspect-ratio:16/9; background:#d1d5db; position:relative; width:100%; overflow:hidden; border-radius:10px; }
+        .thumbMedia { width:100%; height:100%; object-fit:cover; display:block; }
         .time { position:absolute; right:8px; bottom:8px; background:rgba(15,23,42,.9); color:#fff; font-size:12px; padding:2px 6px; border-radius:6px; }
         .meta { display:flex; gap:10px; padding:10px; }
-        .avatar { width:34px; height:34px; border-radius:999px; background:#111827; flex:0 0 auto; }
+        .avatar { width:34px; height:34px; border-radius:999px; background:#111827 center/cover no-repeat; flex:0 0 auto; }
         .title { font-weight:700; font-size:14px; line-height:1.3; }
         .byline { color:var(--muted); font-size:12px; margin-top:4px; }
         .dot { width:4px; height:4px; background:#cbd5e1; border-radius:999px; display:inline-block; margin:0 6px; transform:translateY(-2px); }
@@ -61,24 +64,31 @@ export default function HomePage() {
             aria-label="Search"
             onClick={goSearch}
           >
-            🔍
+            Search
           </button>
         </div>
-        <a className="createBtn" href="#/upload" role="button">＋ Create</a>
+        <a className="createBtn" href="#/upload" role="button">Create</a>
         <div className="avatarBtn" title="Profile">E</div>
       </div>
 
       {/* grid */}
       <section className="grid" aria-label="Videos">
-        {VIDEOS.slice(0, 6).map((v) => (
+        {videos.slice(0, 6).map((v) => (
           <a key={v.id} href={`#/video/${v.id}`} className="card">
-            <div className="thumb"><span className="time">{v.length}</span></div>
+            <div className="thumb">
+              {v.thumb ? (
+                <img className="thumbMedia" src={v.thumb} alt="" />
+              ) : (
+                <video className="thumbMedia" src={v.src} muted playsInline preload="metadata" />
+              )}
+              <span className="time">{v.length}</span>
+            </div>
             <div className="meta">
-              <div className="avatar" />
+              <div className="avatar" style={v.avatarUrl ? { backgroundImage:`url(${v.avatarUrl})` } : undefined} />
               <div>
                 <div className="title">{v.title}</div>
                 <div className="byline">
-                  {v.channel}<span className="dot" />{v.views} views<span className="dot" />{v.when}
+                  {v.channelName || v.channel}<span className="dot" />{v.views || 0} views<span className="dot" />{new Date(v.createdAt || Date.now()).toLocaleDateString()}
                 </div>
               </div>
             </div>
@@ -86,27 +96,6 @@ export default function HomePage() {
         ))}
       </section>
 
-      {/* featured strip */}
-      <section className="strip" aria-label="Featured">
-        <div className="stripHeader">
-          <div className="stripTitle">📹 <span>RELEASED this week!</span></div>
-          <button className="more" type="button">Show more</button>
-        </div>
-        <div className="row">
-          {VIDEOS.slice(6, 9).map((v) => (
-            <a key={v.id} href={`#/video/${v.id}`} className="card">
-              <div className="thumb"><span className="time">{v.length}</span></div>
-              <div className="meta">
-                <div className="avatar" />
-                <div>
-                  <div className="title">{v.title}</div>
-                  <div className="byline">{v.channel}<span className="dot" />{v.when}</div>
-                </div>
-              </div>
-            </a>
-          ))}
-        </div>
-      </section>
     </ShellLayout>
   );
 }

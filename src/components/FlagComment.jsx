@@ -1,17 +1,30 @@
 import React from "react";
 import AdminLayout from "./AdminLayout.jsx";
+import { useNotTube } from "../state/NotTubeState.jsx";
 
 export default function FlagComment() {
   const [url, setUrl] = React.useState("");
   const [code, setCode] = React.useState("Copy Right");
   const [comment, setComment] = React.useState("");
+  const [status, setStatus] = React.useState("");
+  const { createFlag } = useNotTube();
 
   function handleSubmit(e) {
     e.preventDefault();
-    setUrl("");
-    setCode("Copy Right");
-    setComment("");
-    alert("Comment flagged (mock)");
+    setStatus("");
+    createFlag({
+      type: "comment",
+      targetId: url.trim(),
+      reason: code.trim() || "Unspecified",
+      message: comment.trim(),
+    })
+      .then(() => {
+        setStatus("Flag submitted");
+        setUrl("");
+        setCode("Copy Right");
+        setComment("");
+      })
+      .catch((err) => setStatus(err.message || "Failed to submit flag"));
   }
 
   return (
@@ -79,6 +92,7 @@ export default function FlagComment() {
             }}
           />
         </div>
+        {status && <div style={{ marginBottom: 12, color: status.includes("Failed") ? "#b91c1c" : "#065f46" }}>{status}</div>}
         <button
           type="submit"
           style={{
@@ -91,8 +105,9 @@ export default function FlagComment() {
             fontWeight: 600,
             cursor: "pointer",
           }}
+          disabled={!url.trim()}
         >
-          Done
+          Submit flag
         </button>
       </form>
     </AdminLayout>

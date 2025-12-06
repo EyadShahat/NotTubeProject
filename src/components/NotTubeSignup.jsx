@@ -1,20 +1,30 @@
 import React from "react";
+import { useNotTube } from "../state/NotTubeState.jsx";
+import { AVATARS } from "../data/avatars.js";
 
 export default function NotTubeSignup() {
   const [email, setEmail] = React.useState("");
   const [phone, setPhone] = React.useState("");
   const [username, setUsername] = React.useState("");
   const [password, setPassword] = React.useState("");
+  const [avatarUrl, setAvatarUrl] = React.useState(AVATARS[0]);
   const [showPw, setShowPw] = React.useState(false);
+  const [error, setError] = React.useState("");
+  const { signup } = useNotTube();
 
   const canSubmit = email.trim() && username.trim() && password.trim();
 
   async function handleSubmit(e) {
     e.preventDefault();
     if (!canSubmit) return;
+    setError("");
 
-    // ✅ redirect to login after signup
-    window.location.hash = "#/login";
+    try {
+      await signup({ email: email.trim(), password: password.trim(), name: username.trim(), avatarUrl });
+      window.location.hash = "#/home";
+    } catch (err) {
+      setError(err.message || "Signup failed");
+    }
   }
 
   return (
@@ -100,6 +110,7 @@ export default function NotTubeSignup() {
             <p className="subtitle">
               Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi lobortis maximus.
             </p>
+            {error && <div style={{ color: "#b91c1c", marginTop: 8 }}>{error}</div>}
 
             <form className="form" onSubmit={handleSubmit} noValidate>
               <div>
@@ -121,6 +132,28 @@ export default function NotTubeSignup() {
                 <label className="label" htmlFor="username">Username</label>
                 <input id="username" className="input" value={username}
                        onChange={(e)=>setUsername(e.target.value)} placeholder="yourname" required />
+              </div>
+
+              <div>
+                <label className="label">Choose an avatar</label>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(80px, 1fr))", gap:10 }}>
+                  {AVATARS.map((url) => (
+                    <button
+                      type="button"
+                      key={url}
+                      onClick={() => setAvatarUrl(url)}
+                      style={{
+                        border: avatarUrl === url ? "2px solid #111827" : "1px solid #d1d5db",
+                        borderRadius: 10,
+                        padding: 6,
+                        background: "#fff",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <div style={{ width:"100%", aspectRatio:"1/1", borderRadius:8, background:`url(${url}) center/cover no-repeat` }} />
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div>
