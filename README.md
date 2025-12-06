@@ -73,7 +73,17 @@ curl -X POST http://localhost:4000/api/auth/signup \
   -H "Content-Type: application/json" \
   -d '{"email":"user@example.com","password":"password","name":"User"}'
 ```
+login for admin:
+```
+### Admin Account
+- **Email:** admin@nottube.com  
+- **Password:** password  
 
+### User Accounts (Both Users Share the Same Password)
+- **Email:** y@kfupm.edu.sa  
+- **Email:** ya@kfupm.edu.sa  
+- **Password for both:** Aa$123
+```
 Create a video (requires token):
 ```
 TOKEN=your-token-here
